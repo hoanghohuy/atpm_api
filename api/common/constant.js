@@ -35,6 +35,12 @@ const ORDER_MISSING_PARAMETER = {
     "description": "Missing parameter on create order token"
 }
 
+const DATA_INCORRECT = {
+    "returnCode": "5",
+    "message": "Username or password incorrect.",
+    "description": "Username or password incorrect."
+}
+
 
 
 module.exports = {
@@ -43,5 +49,6 @@ module.exports = {
     USER_MISSING_PARAMETER,
     ORDER_MISSING_PARAMETER,
     TOKEN_EXPIRED,
-    RETURN_CODE
+    RETURN_CODE,
+    DATA_INCORRECT
 }

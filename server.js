@@ -1,15 +1,18 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const jwt = require('jsonwebtoken')
+const cors = require('cors')
 dotenv.config();
 const AuthUser = require('./api/middlewares/Auth')
 const Constant = require('./api/common/constant')
 const Method = require('./api/common/method')
-const bodyParser = require("body-parser")
+const bodyParser = require("body-parser");
+const { User } = require('./api/database/User');
 const app = express()
 const port = 3001
 
 app.use(express.json())
+app.use(cors())
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}))
 app.get('/', (req, res) => {
@@ -23,12 +26,23 @@ app.post('/createUserToken', (req,res) => {
     res.json(Constant.USER_MISSING_PARAMETER)
   }
   else {
-    const accessTokenUser = jwt.sign(data, process.env.ACCESS_TOKEN_SECRET);
-    res.json({
-      "returnCode": '1',
-      "message": Constant.RETURN_CODE.OK,
-      accessTokenUser
-    })
+    const index = User.findIndex(item => item.username === dataUser.username)
+    if(index < 0) {
+      res.json(Constant.DATA_INCORRECT)
+    }
+    else {
+      if(User[index].password === dataUser.password) {
+          const accessTokenUser = jwt.sign(dataUser, process.env.ACCESS_TOKEN_SECRET);
+          res.json({
+            "returnCode": '1',
+            "message": Constant.RETURN_CODE.OK,
+            accessTokenUser
+          })
+      } else {
+        res.json(Constant.DATA_INCORRECT)
+      }
+    }
+    
   }
   
 });
@@ -36,11 +50,17 @@ app.post('/createUserToken', (req,res) => {
 // tao token hoa don thanh toan
 app.post('/createOrderToken', AuthUser.verifyUser, (req,res) => {
   const dataOrder = req.body
+  console.log(dataOrder);
   if(Method.isEmptyObject(dataOrder)) {
     res.json(Constant.ORDER_MISSING_PARAMETER)
   }
   else {
-    const accessTokenOrder = jwt.sign(dataOrder, process.env.ACCESS_TOKEN_ORDER_SECRET);
+    if(dataOrder.bill_IP === '' || dataOrder.bill_IP == undefined) {res.json(Constant.ORDER_MISSING_PARAMETER)}
+    if(dataOrder.bill_amount === undefined) {res.json(Constant.ORDER_MISSING_PARAMETER)}
+    if(dataOrder.bill_Type === '' || dataOrder.bill_Type === undefined) {res.json(Constant.ORDER_MISSING_PARAMETER)}
+    const accessTokenOrder = jwt.sign(dataOrder, process.env.ACCESS_TOKEN_ORDER_SECRET,
+    {expiresIn: '15m'}
+    );
     res.json({
       "returnCode": "1",
       "message": Constant.RETURN_CODE.OK,
@@ -62,10 +82,11 @@ app.get('/getUserInfo', AuthUser.verifyUser , (req, res) => {
 })
 
 //encode token =>>> Order info
-app.get('/getOrderInfo', AuthUser.verifyUser, (req, res) => {
+app.post('/getOrderInfo', AuthUser.verifyUser, (req, res) => {
   const orderToken = req.body.accessTokenOrder
   const infoOrder = jwt.verify(orderToken, process.env.ACCESS_TOKEN_ORDER_SECRET, (err, data) => {
       if(err) {
+        console.log("err", err)
         res.json(Constant.PERMISSION_DENIED)
       }
       res.json({
